@@ -623,10 +623,10 @@ eventBus.on('mci_became_stable', function(mci){
 
 
 eventBus.on('headless_wallet_ready', function(){
-	if (!conf.admin_email || !conf.from_email){
+	/*if (!conf.admin_email || !conf.from_email){
 		console.log("please specify admin_email and from_email in your "+desktopApp.getAppDataDir()+'/conf.json');
 		process.exit(1);
-	}
+	}*/
 	initOperatorAddress();
 	matchOrdersUnderLock(1);
 });

@@ -15,21 +15,6 @@ const TEMP_DATA_EXPIRY_PERIOD = 3600*1000;
 headlessWallet.setupChatEventHandlers();
 
 
-function notifyAdmin(subject, body){
-	mail.sendmail({
-		to: conf.admin_email,
-		from: conf.from_email,
-		subject: subject,
-		body: body
-	});
-}
-
-function notifyAdminAboutFailedPayment(err){
-	console.log('payment failed: '+err);
-	notifyAdmin('payment failed: '+err, err);
-}
-
-
 function sendMessageToDevice(device_address, text){
 	var device = require('byteballcore/device.js');
 	device.sendMessageToDevice(device_address, 'text', text);
