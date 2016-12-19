@@ -1,7 +1,7 @@
 /*jslint node: true */
 "use strict";
-var _ = require('byteballcore/node_modules/lodash');
-var async = require('byteballcore/node_modules/async');
+var _ = require('lodash');
+var async = require('async');
 var conf = require('byteballcore/conf.js');
 var db = require('byteballcore/db.js');
 var eventBus = require('byteballcore/event_bus.js');
