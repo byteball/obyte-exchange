@@ -1,0 +1,27 @@
+{
+  "name": "byteball-exchange",
+  "description": "Byteball exchange",
+  "author": "Byteball",
+  "version": "0.1.0",
+  "main": "start.js",
+  "keywords": [
+    "exchange",
+    "byteball"
+  ],
+  "license": "MIT",
+  "repository": {
+    "url": "git://github.com/byteball/byteball-exchange.git",
+    "type": "git"
+  },
+  "bugs": {
+    "url": "https://github.com/byteball/byteball-exchange/issues"
+  },
+  "browser": {
+    "request": "browser-request",
+    "secp256k1": "secp256k1/js"
+  },
+  "dependencies": {
+    "byteballcore": "^0.1.0",
+    "headless-byteball": "git+https://github.com/byteball/headless-byteball.git"
+  }
+}
