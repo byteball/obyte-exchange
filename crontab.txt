@@ -1,0 +1,1 @@
+*/20 * * * * cd byteball-exchange; node check_daemon.js 1>>~/.config/byteball-exchange/check_daemon.log 2>>~/.config/byteball-exchange/check_daemon.err
