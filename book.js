@@ -106,7 +106,8 @@ function findMatches(rows, onDone){
 			var counterparties_order_type = bSellersFirst ? 'buy' : 'sell';
 			var sought_amount = arrFirst[0].amount;
 			var arrUsedIndexes = [];
-			for (var i=0; i < arrSecond.length && sought_amount > 0; i++){
+			// don't allow too many counterparties, otherwise we risk getting too many authors
+			for (var i=0; i < arrSecond.length && sought_amount > 0 && objMatch[counterparties_order_type].length < 10; i++){
 				var row = arrSecond[i];
 				if (row.amount > sought_amount || !pricesCross(row, arrFirst[0]))
 					continue;
