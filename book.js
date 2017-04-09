@@ -161,16 +161,13 @@ function createPaymentMessage(asset, inputs, outputs){
 }
 
 var signer = {
-	getSignatureLength: function(address, path){
-		return constants.SIG_LENGTH;
-	},
-	readSigningPaths: function(conn, address, handleSigningPaths){
-		handleSigningPaths(['r.1.0']);
+	readSigningPaths: function(conn, address, handleLengthsBySigningPaths){
+		handleLengthsBySigningPaths({'r.1.0': constants.SIG_LENGTH});
 	},
 	readDefinition: function(conn, address, handleDefinition){
 		conn.query("SELECT definition FROM shared_addresses WHERE shared_address=?", [address], function(rows){
 			if (rows.length !== 1)
-				throw "definition not found";
+				throw Error("definition not found");
 			handleDefinition(null, JSON.parse(rows[0].definition));
 		});
 	},
@@ -181,7 +178,7 @@ var signer = {
 			[address, signing_path],
 			function(rows){
 				if (rows.length !== 1)
-					throw Error("not 1 member address per shared address");
+					throw Error(rows.length+" member addresses per shared address "+address+" at "+signing_path);
 				var row = rows[0];
 				if (row.member_signing_path !== 'r')
 					throw Error('member address is not plain single-sig');
