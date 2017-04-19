@@ -6,6 +6,7 @@ exports.port = null;
 exports.bServeAsHub = false;
 exports.bLight = false;
 exports.bSingleAddress = true;
+exports.bIgnoreUnpairRequests = true;
 
 exports.storage = 'sqlite';
 
