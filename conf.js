@@ -13,7 +13,7 @@ exports.storage = 'sqlite';
 
 exports.hub = 'byteball.org/bb-test';
 exports.deviceName = 'Exchange';
-exports.permanent_paring_secret = '0000';
+exports.permanent_pairing_secret = '0000';
 exports.control_addresses = ['DEVICE ALLOWED TO CHAT'];
 exports.payout_address = 'WHERE THE MONEY CAN BE SENT TO';
 
