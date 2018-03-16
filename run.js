@@ -1,6 +1,5 @@
 /*jslint node: true */
 "use strict";
-var _ = require('lodash');
 var async = require('async');
 var conf = require('byteballcore/conf.js');
 var db = require('byteballcore/db.js');
@@ -12,8 +11,10 @@ var book = require("./book.js");
 
 const TEMP_DATA_EXPIRY_PERIOD = 3600*1000;
 
-headlessWallet.setupChatEventHandlers();
-
+if (conf.bRunWitness)
+	require('byteball-witness');
+else
+	headlessWallet.setupChatEventHandlers();
 
 function sendMessageToDevice(device_address, text){
 	var device = require('byteballcore/device.js');
@@ -160,8 +161,8 @@ eventBus.on('text', function(from_address, text){
 						function(err, arrOrderAddressInfos){
 							if (err)
 								return sendMessageToDevice(from_address, err);
-							book.readPairProps(data.permanent.pair_id, function(asset1, asset2, multiplier){
-								let in_asset = (order_type === 'buy') ? asset2 : asset1;
+							book.readPairProps(data.permanent.pair_id, function(objAsset1, objAsset2, multiplier){
+								let in_asset = (order_type === 'buy') ? objAsset2.asset : objAsset1.asset;
 								var arrPayments = [];
 								var assocDefinitions = {};
 								arrOrderAddressInfos.forEach((objOrderAddressInfo) => {
@@ -194,11 +195,15 @@ eventBus.on('text', function(from_address, text){
 					data.bUpdated = true;
 				}
 				else{
-					let asset1 = data.permanent.asset1;
-					let asset2 = data.permanent.asset2;
+					let alias1 = data.permanent.alias1;
+					let alias2 = data.permanent.alias2;
 					let count_lots = book.getLots(amount).length;
 					let total_fee = fee * count_lots;
-					sendMessageToDevice(from_address, (order_type === 'buy' ? 'Buying ' : 'Selling ') + amount + ' ' + asset1 + '/' + asset2 + ' at '+data.temp.price.value + ", you'll receive "+(order_type === 'buy' ? asset1 : asset2)+" at your address " + data.temp.address.value + ".\n"+count_lots+" orders will be placed, the fee is "+fee+" bytes per each, total fee is "+total_fee+" bytes.\nPlease confirm. [Confirm](command:confirm)");
+					book.readPairProps(data.permanent.pair_id, function(objAsset1, objAsset2){
+						let price_multiplier = Math.pow(10, objAsset2.decimals - objAsset1.decimals); // from display to internal
+						let display_amount = (amount / Math.pow(10, objAsset1.decimals)).toLocaleString([], {maximumFractionDigits: objAsset1.decimals});
+						sendMessageToDevice(from_address, (order_type === 'buy' ? 'Buying ' : 'Selling ') + display_amount + ' ' + alias1 + '/' + alias2 + ' at '+(data.temp.price.value/price_multiplier) + ", you'll receive "+(order_type === 'buy' ? alias1 : alias2)+" to your address " + data.temp.address.value + ".\n"+count_lots+" orders will be placed, the fee is "+fee+" bytes per each, total fee is "+total_fee+" bytes.\nPlease confirm. [Confirm](command:confirm)");
+					});
 				}
 			}
 			else{
@@ -212,7 +217,8 @@ eventBus.on('text', function(from_address, text){
 				else if (!bHaveOrder)
 					sendMessageToDevice(from_address, 'What are you going to do? Say, for example, "buy 100", or "sell 200"');
 				else if (!bHavePrice){
-					book.readPairProps(data.permanent.pair_id, function(asset1, asset2, multiplier){
+					book.readPairProps(data.permanent.pair_id, function(objAsset1, objAsset2, multiplier){
+						let price_multiplier = Math.pow(10, objAsset2.decimals - objAsset1.decimals); // from display to internal
 						book.readBidAsk(data.permanent.pair_id, function(bid, ask){
 							let order_type = data.temp.order_type.value;
 							let bCanFrontRun = (!ask || !bid || Math.round(multiplier*(ask-bid)) > 1);
@@ -224,28 +230,28 @@ eventBus.on('text', function(from_address, text){
 							var message = "What price would you like to "+order_type+" at?";
 							if (order_type === 'buy'){
 								if (ask)
-									message += "\n[at "+ask+"](command:at "+ask+") - fast";
+									message += "\n[at "+(ask/price_multiplier)+"](command:at "+(ask/price_multiplier)+") - fast";
 								if (!bid && ask) // set fake bid at 99% min sell
 									bid = Math.round((ask*0.99)*multiplier)/multiplier;
 								if (bid){
 									let front_running_price = bCanFrontRun ? (bid+1/multiplier) : bid;
-									message += "\n[at "+front_running_price+"](command:at "+front_running_price+") - have to wait";
+									message += "\n[at "+(front_running_price/price_multiplier)+"](command:at "+(front_running_price/price_multiplier)+") - have to wait";
 									let example_price = Math.round((bid*0.99)*multiplier)/multiplier;
-									message += '\nOr type your price, e.g. "at '+example_price+'", the lower your price, the longer you\'ll have to wait';
+									message += '\nOr type your price, e.g. "at '+(example_price/price_multiplier)+'", the lower your price, the longer you\'ll have to wait';
 								}
 								else
 									message += '\nType your price, e.g. "at 1.2345", the lower your price, the longer you\'ll have to wait';
 							}
 							else{
 								if (bid)
-									message += "\n[at "+bid+"](command:at "+bid+") - fast";
+									message += "\n[at "+(bid/price_multiplier)+"](command:at "+(bid/price_multiplier)+") - fast";
 								if (!ask && bid) // set fake ask at 101% max buy
 									ask = Math.round((bid*1.01)*multiplier)/multiplier;
 								if (ask){
 									let front_running_price = bCanFrontRun ? (ask-1/multiplier) : ask;
-									message += "\n[at "+front_running_price+"](command:at "+front_running_price+") - have to wait";
+									message += "\n[at "+(front_running_price/price_multiplier)+"](command:at "+(front_running_price/price_multiplier)+") - have to wait";
 									let example_price = Math.round((ask*1.01)*multiplier)/multiplier;
-									message += '\nOr type your price, e.g. "at '+example_price+'", the higher your price, the longer you\'ll have to wait';
+									message += '\nOr type your price, e.g. "at '+(example_price/price_multiplier)+'", the higher your price, the longer you\'ll have to wait';
 								}
 								else
 									message += '\nType your price, e.g. "at 1.2345", the higher your price, the longer you\'ll have to wait';
@@ -255,7 +261,7 @@ eventBus.on('text', function(from_address, text){
 					});
 				}
 				else if (!bHaveAddress)
-					sendMessageToDevice(from_address, 'Please let me know your address you\'d like to receive '+(data.temp.order_type.value === 'buy' ? data.permanent.asset1 : data.permanent.asset2)+' to (use "Insert My Address" button)');
+					sendMessageToDevice(from_address, 'Please let me know your address you\'d like to receive '+(data.temp.order_type.value === 'buy' ? data.permanent.alias1 : data.permanent.alias2)+' to (use "Insert My Address" button)');
 				else if (!fee)
 					sendMessageToDevice(from_address, "The minimum fee per order is "+book.MIN_FEE+" bytes. [Pay minimum fee](command:fee "+book.MIN_FEE+') or type e.g. "fee 2000" to pay a higher fee and give your order greater priority');
 				else
@@ -281,16 +287,18 @@ eventBus.on('text', function(from_address, text){
 		function handleOrderTypeAndAmount(cb){
 			if (!data.permanent.pair_id) // ignore when we don't know the pair and can't adjust amount
 				return cb();
-			let arrMatches = text.match(/\b(buy|sell)\b\s+(\d+)/i);
+			let arrMatches = text.match(/\b(buy|sell)\b\s+([\d.]+)/i);
 			if (!arrMatches)
 				return cb();
 			let order_type = arrMatches[1].toLowerCase();
-			var amount = parseInt(arrMatches[2]);
-			if (!amount || isNaN(amount))
+			var display_amount = parseFloat(arrMatches[2]);
+			if (!display_amount || isNaN(display_amount))
 				return cb();
-			book.readPairProps(data.permanent.pair_id, function(asset1, asset2, multiplier, amount_increment){
+			book.readPairProps(data.permanent.pair_id, function(objAsset1, objAsset2, multiplier, amount_increment){
+				let asset1_multiplier = Math.pow(10, objAsset1.decimals);
+				let amount = Math.round(display_amount * asset1_multiplier);
 				let adjusted_amount = Math.round(amount/amount_increment)*amount_increment;
-				var response = ( (order_type === 'buy') ? 'Buying ' : 'Selling ' ) + adjusted_amount + " "+data.permanent.asset1;
+				var response = ( (order_type === 'buy') ? 'Buying ' : 'Selling ' ) + (adjusted_amount/asset1_multiplier).toLocaleString([], {maximumFractionDigits: objAsset1.decimals}) + " "+data.permanent.alias1;
 				if (adjusted_amount !== amount)
 					response += ' (amount adjusted to the closest standard size)';
 				amount = adjusted_amount;
@@ -308,12 +316,15 @@ eventBus.on('text', function(from_address, text){
 			let arrMatches = text.match(/(?:at|@)\s*([\d.]+)/i);
 			if (!arrMatches)
 				return cb();
-			let price = parseFloat(arrMatches[1]);
-			if (!price || isNaN(price))
+			let display_price = parseFloat(arrMatches[1]);
+			if (!display_price || isNaN(display_price))
 				return cb();
-			book.readPairProps(data.permanent.pair_id, function(asset1, asset2, multiplier){
+			book.readPairProps(data.permanent.pair_id, function(objAsset1, objAsset2, multiplier){
+				let price_multiplier = Math.pow(10, objAsset2.decimals - objAsset1.decimals); // from display to internal
+				let price = display_price * price_multiplier;
 				let adjusted_price = Math.round(price*multiplier)/multiplier;
-				var response = "Price set to "+adjusted_price+(data.permanent.asset1 ? (" "+data.permanent.asset2+" per "+data.permanent.asset1) : "");
+				console.error('price '+price+', adjusted '+adjusted_price);
+				var response = "Price set to "+(adjusted_price/price_multiplier)+(data.permanent.alias1 ? (" "+data.permanent.alias2+" per "+data.permanent.alias1) : "");
 				if (price !== adjusted_price)
 					response += ' (price adjusted to the closest allowed level)';
 				updateTempData(data, 'price', adjusted_price);
@@ -356,18 +367,18 @@ eventBus.on('text', function(from_address, text){
 		
 		// currency pair
 		function handlePair(cb){
-			let arrMatches = text.match(/\b(\w{3,10})\s*\/\s*(\w{3,10})\b/);
+			let arrMatches = text.match(/\b(\w{2,10})\s*\/\s*(\w{2,10})\b/);
 			if (arrMatches){
-				let asset1 = arrMatches[1];
-				let asset2 = arrMatches[2];
-				findPairByNames(asset1, asset2, function(err, pair_id){
+				let alias1 = arrMatches[1];
+				let alias2 = arrMatches[2];
+				findPairByNames(alias1, alias2, function(err, pair_id){
 					if (err)
 						return sendMessageToDevice(from_address, err);
 					data.permanent.pair_id = pair_id;
-					data.permanent.asset1 = asset1;
-					data.permanent.asset2 = asset2;
+					data.permanent.alias1 = alias1;
+					data.permanent.alias2 = alias2;
 					data.bUpdated = true;
-					sendMessageToDevice(from_address, "Currency pair set to "+asset1 + '/' + asset2+"\nYou can change it at any time by typing another pair.");
+					sendMessageToDevice(from_address, "Currency pair set to "+alias1 + '/' + alias2+"\nYou can change it at any time by typing another pair.");
 					cb();
 				});
 			}
@@ -389,19 +400,30 @@ eventBus.on('text', function(from_address, text){
 			case 'orders':
 				if (!data.permanent.pair_id)
 					return sendMessageToDevice(from_address, "To see the book, please choose a pair first");
-				let and_device = (lc_text === 'book') ? '' : ' AND device_address=? ';
-				var params = [data.permanent.pair_id];
-				if (lc_text === 'orders')
-					params.push(from_address);
-				db.query(
-					"SELECT price, order_type, SUM(amount) AS total FROM orders WHERE is_active=1 AND pair_id=? "+and_device+" \n\
-					GROUP BY price, order_type ORDER BY price DESC",
-					params,
-					function(rows){
-						var arrLines = rows.map(row => "At "+row.price+" "+row.order_type+" vol. "+row.total);
-						sendMessageToDevice(from_address, arrLines.join("\n") || "No orders at this time.");
-					}
-				);
+				book.readPairProps(data.permanent.pair_id, function(objAsset1, objAsset2){
+					let price_multiplier = Math.pow(10, objAsset2.decimals - objAsset1.decimals); // from display to internal
+					let asset1_multiplier = Math.pow(10, objAsset1.decimals);
+					let and_device = (lc_text === 'book') ? '' : ' AND device_address=? ';
+					var params = [data.permanent.pair_id];
+					if (lc_text === 'orders')
+						params.push(from_address);
+					db.query(
+						"SELECT price, order_type, SUM(amount) AS total FROM orders WHERE is_active=1 AND pair_id=? "+and_device+" \n\
+						GROUP BY price, order_type ORDER BY price DESC, order_type DESC",
+						params,
+						function(rows){
+							var arrLines = [];
+							var prev_order_type;
+							rows.forEach(row => {
+								if (prev_order_type && prev_order_type !== row.order_type)
+									arrLines.push('');
+								arrLines.push("At "+(row.price/price_multiplier)+" "+row.order_type+" vol. "+(row.total/asset1_multiplier).toLocaleString([], {maximumFractionDigits: objAsset1.decimals}));
+								prev_order_type = row.order_type;
+							});
+							sendMessageToDevice(from_address, arrLines.join("\n") || "No orders at this time.");
+						}
+					);
+				});
 				return;
 		}
 	

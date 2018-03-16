@@ -14,7 +14,7 @@ var desktopApp = require('byteballcore/desktop_app.js');
 
 const MIN_FEE = 1000;
 const ORDER_TERM = 3600 * 1000;
-const TIMESTAMPER_ADDRESS = 'OPNUXBRSSQQGHKQNEPD2GLWQYEUY5XLD';
+const TIMESTAMPER_ADDRESS = 'I2ADHGP4HL6J37NQAD73J7E5SKFIXJOT';
 var operator_address;
 var operator_fee_address;
 
@@ -41,16 +41,31 @@ function readBidAsk(pair_id, handleMinMaxPrices){
 
 function readPairProps(pair_id, handleProps){
 	db.query(
-		"SELECT asset_indexes1.asset AS asset1, asset_indexes2.asset AS asset2, multiplier, amount_increment \n\
+		"SELECT asset_indexes1.asset AS asset1, asset_indexes2.asset AS asset2, multiplier, amount_increment, \n\
+			aliases1.alias AS alias1, aliases2.alias AS alias2, \n\
+			aliases1.decimals AS decimals1, aliases2.decimals AS decimals2 \n\
 		FROM pairs \n\
 		JOIN asset_indexes AS asset_indexes1 ON asset_id1=asset_indexes1.asset_id \n\
 		JOIN asset_indexes AS asset_indexes2 ON asset_id2=asset_indexes2.asset_id \n\
+		LEFT JOIN aliases AS aliases1 ON asset_id1=aliases1.asset_id AND aliases1.is_default=1 \n\
+		LEFT JOIN aliases AS aliases2 ON asset_id2=aliases2.asset_id AND aliases2.is_default=1 \n\
 		WHERE pair_id=?",
 		[pair_id],
 		function(rows){
 			if (rows.length !== 1)
 				throw Error('not 1 pair');
-			handleProps(rows[0].asset1 || 'base', rows[0].asset2 || 'base', rows[0].multiplier, rows[0].amount_increment);
+			let row = rows[0];
+			let objAsset1 = {
+				asset: row.asset1 || 'base',
+				alias: row.alias1,
+				decimals: row.decimals1
+			};
+			let objAsset2 = {
+				asset: row.asset2 || 'base',
+				alias: row.alias2,
+				decimals: row.decimals2
+			};
+			handleProps(objAsset1, objAsset2, row.multiplier, row.amount_increment);
 		}
 	);
 }
@@ -228,7 +243,9 @@ function matchOrders(pair_id, onDone){
 				return onDone();
 			if (max_int_buy_price < min_int_sell_price)
 				return onDone();
-			readPairProps(pair_id, function(asset1, asset2){
+			readPairProps(pair_id, function(objAsset1, objAsset2){
+				let asset1 = objAsset1.asset;
+				let asset2 = objAsset2.asset;
 				db.query(
 					"SELECT order_id, order_type, order_address, device_address, int_price, amount, counter_amount, \n\
 						address, unit, message_index, output_index, \n\
@@ -372,20 +389,22 @@ function matchOrdersUnderLock(pair_id){
 }
 
 function initOperatorAddress(onDone){
-	if (!onDone)
-		onDone = function(){};
-	db.query(
-		"SELECT address FROM my_addresses JOIN unit_authors USING(address) JOIN units USING(unit) WHERE is_stable=1 AND sequence='good' LIMIT 1", 
-		function(rows){
-			if (rows.length === 0){
-				console.log('no operator address yet');
-				return onDone('no operator address yet');
-			}
-			operator_address = rows[0].address;
-			operator_fee_address = operator_address;
-			onDone();
-		}
-	);
+	headlessWallet.readSingleAddress(function(address){
+		operator_address = address;
+		operator_fee_address = operator_address;
+		console.log('=== operator address '+operator_address);
+		// if the operator address was not used yet, create any tx
+		db.query("SELECT address FROM unit_authors WHERE address=? LIMIT 1", [operator_address], rows => {
+			if (rows.length > 0)
+				return onDone ? onDone() : null;
+			headlessWallet.issueChangeAddressAndSendPayment(null, 1000, operator_address, null, (err, unit) => {
+				if (err)
+					throw Error("failed to create first tx from operator address: "+err);
+				if (onDone)
+					onDone();
+			});
+		});
+	});
 }
 
 function isOperatorReady(){
@@ -410,7 +429,9 @@ function getLots(amount){
 function handleOrder(pair_id, order_type, price, amount, address, device_address, handleResult){
 	var walletDefinedByAddresses = require('byteballcore/wallet_defined_by_addresses.js');
 	var device = require('byteballcore/device.js');
-	readPairProps(pair_id, function(asset1, asset2, multiplier){
+	readPairProps(pair_id, function(objAsset1, objAsset2, multiplier){
+		let asset1 = objAsset1.asset;
+		let asset2 = objAsset2.asset;
 		let int_price = Math.round(price*multiplier);
 		var in_asset, out_asset;
 		if (order_type === 'buy'){
@@ -500,13 +521,17 @@ function handleOrder(pair_id, order_type, price, amount, address, device_address
 
 eventBus.on('new_my_transactions', function(arrUnits){
 	arrUnits.forEach(function(unit){
-		var assocAmountsByDeviceAndAsset = {};
+		var assocAmountsByDeviceAndAlias = {};
+		var assocDecimalsByAlias = {};
 		db.query(
-			"SELECT expected_deposits.*, message_index, output_index, outputs.amount AS output_amount FROM outputs \n\
+			"SELECT expected_deposits.*, message_index, output_index, outputs.amount AS output_amount, decimals, alias \n\
+			FROM outputs \n\
 			JOIN expected_deposits \n\
 				ON outputs.address=expected_deposits.order_address \n\
 				AND outputs.amount>=expected_deposits.in_amount \n\
 				AND (outputs.asset=expected_deposits.asset OR outputs.asset IS NULL AND expected_deposits.asset IS NULL) \n\
+			LEFT JOIN asset_indexes ON outputs.asset=asset_indexes.asset OR outputs.asset IS NULL AND asset_indexes.asset IS NULL \n\
+			LEFT JOIN aliases ON asset_indexes.asset_id=aliases.asset_id AND is_default=1 \n\
 			WHERE unit=? AND received_date IS NULL",
 			[unit],
 			function(rows){
@@ -515,8 +540,11 @@ eventBus.on('new_my_transactions', function(arrUnits){
 						console.log(text);
 						cb();
 					}
+					if (!row.alias)
+						throw Error("no alias for unit "+unit);
 					if (row.asset && row.output_amount !== row.in_amount)
 						return logAndContinue('for non-base assets, expected amount must be matched exactly');
+					assocDecimalsByAlias[row.alias] = row.decimals;
 					
 					signer.readDefinition(db, row.order_address, function(err, arrDefinition){
 						function insertOrder(){
@@ -532,12 +560,12 @@ eventBus.on('new_my_transactions', function(arrUnits){
 								amount, counter_amount, row.price, row.int_price, row.message_index, row.output_index, 
 								fee, fee_message_index, fee_output_index],
 								function(){
-									let asset = row.asset || 'base';
-									if (!assocAmountsByDeviceAndAsset[row.device_address])
-										assocAmountsByDeviceAndAsset[row.device_address] = {};
-									if (!assocAmountsByDeviceAndAsset[row.device_address][asset])
-										assocAmountsByDeviceAndAsset[row.device_address][asset] = 0;
-									assocAmountsByDeviceAndAsset[row.device_address][asset] += row.output_amount;
+								//	let asset = row.asset || 'base';
+									if (!assocAmountsByDeviceAndAlias[row.device_address])
+										assocAmountsByDeviceAndAlias[row.device_address] = {};
+									if (!assocAmountsByDeviceAndAlias[row.device_address][row.alias])
+										assocAmountsByDeviceAndAlias[row.device_address][row.alias] = 0;
+									assocAmountsByDeviceAndAlias[row.device_address][row.alias] += row.output_amount/Math.pow(10, row.decimals);
 									cb();
 									// since now, we wait that the unit becomes stable
 								}
@@ -586,21 +614,21 @@ eventBus.on('new_my_transactions', function(arrUnits){
 					});
 				}, function(){
 					var device = require('byteballcore/device.js');
-					for (var device_address in assocAmountsByDeviceAndAsset)
-						for (var asset in assocAmountsByDeviceAndAsset[device_address])
-							device.sendMessageToDevice(device_address, 'text', "Received "+assocAmountsByDeviceAndAsset[device_address][asset]+" "+(asset === 'base' ? 'bytes' : ' of '+asset)+", will add your order to the [book](command:book) after the transaction is final.");
+					for (var device_address in assocAmountsByDeviceAndAlias)
+						for (var alias in assocAmountsByDeviceAndAlias[device_address])
+							device.sendMessageToDevice(device_address, 'text', "Received "+assocAmountsByDeviceAndAlias[device_address][alias].toLocaleString([], {maximumFractionDigits: assocDecimalsByAlias[alias]})+" "+alias+", will add your order to the [book](command:book) after the transaction is final.");
 				});
 			}
 		);
 	});
 });
 
-eventBus.on('mci_became_stable', function(mci){
+eventBus.on('my_transactions_became_stable', function(arrUnits){
 	mutex.lock(["write"], function(unlock){
 		unlock(); // we don't need to block writes, we requested the lock just to wait that the current write completes
 		db.query(
-			"SELECT order_id, pair_id, device_address FROM orders JOIN units USING(unit) WHERE main_chain_index=? AND is_active IS NULL", 
-			[mci], 
+			"SELECT order_id, pair_id, device_address FROM orders WHERE unit IN(?) AND is_active IS NULL", 
+			[arrUnits], 
 			function(rows){
 				if (rows.length === 0)
 					return;
@@ -620,13 +648,16 @@ eventBus.on('mci_became_stable', function(mci){
 });
 
 
-eventBus.on('headless_wallet_ready', function(){
+eventBus.once('headless_wallet_ready', function(){
 	/*if (!conf.admin_email || !conf.from_email){
 		console.log("please specify admin_email and from_email in your "+desktopApp.getAppDataDir()+'/conf.json');
 		process.exit(1);
 	}*/
-	initOperatorAddress();
-	matchOrdersUnderLock(1);
+	initOperatorAddress(() => {
+		matchOrdersUnderLock(1);
+	});
+//	var network = require('byteballcore/network.js');
+//	network.requestHistoryFor(['f2TMkqij/E3qx3ALfVBA8q5ve5xAwimUm92UrEribIE=', '1OLPCz72F1rJ7IGtmEMuV1LvfLawT9WGOFuHugW2b7c='], []);
 });
 
 

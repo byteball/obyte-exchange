@@ -11,7 +11,7 @@ exports.bIgnoreUnpairRequests = true;
 exports.storage = 'sqlite';
 
 
-exports.hub = 'byteball.org/bb-test';
+exports.hub = 'byteball.org/bb';
 exports.deviceName = 'Exchange';
 exports.permanent_pairing_secret = '0000';
 exports.control_addresses = ['DEVICE ALLOWED TO CHAT'];
