@@ -123,6 +123,13 @@ function readAvailablePairs(handlePairs){
 	);
 }
 
+function printPairs(device_address){
+	readAvailablePairs(function(pairs_list){
+		sendMessageToDevice(device_address, "Please choose one of the currency pairs:\n"+pairs_list+"\nOr specify another pair by typing the first few characters of asset names separated by slash: asset1/asset2");
+	});
+
+}
+
 function isAffirmative(text){
 	let lc_text = text.toLowerCase();
 	return (lc_text === 'confirm' || lc_text === 'i confirm' || lc_text === 'confirmed' || lc_text === 'yes' || lc_text === 'correct' || lc_text === 'right' || lc_text === "that's right" || lc_text === "that's correct");
@@ -209,11 +216,8 @@ eventBus.on('text', function(from_address, text){
 			else{
 				if (arrResponses.length > 0)
 					sendMessageToDevice(from_address, arrResponses.join("\n"));
-				if (!bHavePair){
-					readAvailablePairs(function(pairs_list){
-						sendMessageToDevice(from_address, "Please choose one of the currency pairs:\n"+pairs_list+"\nOr specify another pair by typing the first few characters of asset names separated by slash: asset1/asset2");
-					});
-				}
+				if (!bHavePair)
+					printPairs(from_address);
 				else if (!bHaveOrder)
 					sendMessageToDevice(from_address, 'What are you going to do? Say, for example, "buy 100", or "sell 200"');
 				else if (!bHavePrice){
@@ -378,7 +382,7 @@ eventBus.on('text', function(from_address, text){
 					data.permanent.alias1 = alias1;
 					data.permanent.alias2 = alias2;
 					data.bUpdated = true;
-					sendMessageToDevice(from_address, "Currency pair set to "+alias1 + '/' + alias2+"\nYou can change it at any time by typing another pair.");
+					sendMessageToDevice(from_address, "Currency pair set to "+alias1 + '/' + alias2+"\nYou can change it at any time by typing another pair.\n\nSee the [book](command:book), see your own [orders](command:orders).");
 					cb();
 				});
 			}
@@ -425,6 +429,12 @@ eventBus.on('text', function(from_address, text){
 					);
 				});
 				return;
+				
+			case 'pairs':
+				return printPairs(from_address);
+				
+			case 'help':
+				return sendMessageToDevice(from_address, "Use the following commands:\n[pairs](command:pairs): switch to another trading pair;\n[book](command:book): print the order book;\n[orders](command:orders): print your own pending orders;\nbuy <amount>: create a buy order;\nsell <amount>: create a sell order;\nat <price>: set the current buy or sell price.")
 		}
 	
 		async.series([handlePair, handleOrderTypeAndAmount, handlePrice, handleAddress, handleFee, handleKnownData, updateSessionIfNecessary]);
