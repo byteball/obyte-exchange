@@ -108,6 +108,7 @@ function findMatches(rows, onDone){
 			return onDone(arrMatches);
 		arrSellers.sort(sortByAmountDescFeeDesc);
 		arrBuyers.sort(sortByAmountDescFeeDesc);
+		var total_count_authors = 0;
 		var max_count = arrSellers.length + arrBuyers.length;
 		while (arrSellers.length > 0 && arrBuyers.length > 0){
 			if (max_count < 0)
@@ -122,7 +123,7 @@ function findMatches(rows, onDone){
 			var sought_amount = arrFirst[0].amount;
 			var arrUsedIndexes = [];
 			// don't allow too many counterparties, otherwise we risk getting too many authors
-			for (var i=0; i < arrSecond.length && sought_amount > 0 && objMatch[counterparties_order_type].length < 10; i++){
+			for (var i=0; i < arrSecond.length && sought_amount > 0 && objMatch[counterparties_order_type].length < constants.MAX_AUTHORS_PER_UNIT-1; i++){
 				var row = arrSecond[i];
 				if (row.amount > sought_amount || !pricesCross(row, arrFirst[0]))
 					continue;
@@ -135,6 +136,10 @@ function findMatches(rows, onDone){
 			if (sought_amount === 0){ // found a set of counterparts that has the target sum
 				if (objMatch[counterparties_order_type].length === 0)
 					throw Error("still no counterparties?");
+				var count_authors = objMatch.buy.length + objMatch.sell.length;
+				if (total_count_authors + count_authors > constants.MAX_AUTHORS_PER_UNIT) // would exceed the limit
+					break;
+				total_count_authors += count_authors;
 				arrMatches.push(objMatch);
 				arrFirst.shift();
 				for (var j=arrUsedIndexes.length-1; j>=0; j--) // iterating in reverse because splice changes indexes
