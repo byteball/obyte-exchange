@@ -302,6 +302,10 @@ eventBus.on('text', function(from_address, text){
 				let asset1_multiplier = Math.pow(10, objAsset1.decimals);
 				let amount = Math.round(display_amount * asset1_multiplier);
 				let adjusted_amount = Math.round(amount/amount_increment)*amount_increment;
+				if (adjusted_amount === 0){
+					arrResponses.push("The amount is too small, the minimum is "+(amount_increment/asset1_multiplier).toLocaleString([], {maximumFractionDigits: objAsset1.decimals}));
+					return cb();
+				}
 				var response = ( (order_type === 'buy') ? 'Buying ' : 'Selling ' ) + (adjusted_amount/asset1_multiplier).toLocaleString([], {maximumFractionDigits: objAsset1.decimals}) + " "+data.permanent.alias1;
 				if (adjusted_amount !== amount)
 					response += ' (amount adjusted to the closest standard size)';
