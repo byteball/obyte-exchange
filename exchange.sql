@@ -35,6 +35,7 @@ CREATE TABLE pairs (
 	multiplier INT NOT NULL, -- =1/pip is the multiplier that would make the price int
 	amount_increment INT NOT NULL, -- order amount must be divisible by amount_increment, which itself must be a power of 2
 	creation_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	is_delisted TINYINT NOT NULL DEFAULT 0,
 	UNIQUE (asset_id1, asset_id2),
 	FOREIGN KEY (asset_id1) REFERENCES asset_indexes(asset_id),
 	FOREIGN KEY (asset_id2) REFERENCES asset_indexes(asset_id)
@@ -127,3 +128,9 @@ CREATE TABLE sessions (
 	FOREIGN KEY (pair_id) REFERENCES pairs(pair_id),
 	FOREIGN KEY (device_address) REFERENCES correspondent_devices(device_address)
 );
+
+/*
+
+ALTER TABLE pairs ADD COLUMN is_delisted TINYINT NOT NULL DEFAULT 0;
+
+*/

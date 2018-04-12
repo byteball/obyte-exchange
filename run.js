@@ -80,7 +80,7 @@ function findAsset(asset, handleResult){
 }
 
 function findPair(asset_id1, asset_id2, handleResult){
-	db.query("SELECT pair_id FROM pairs WHERE asset_id1=? AND asset_id2=?", [asset_id1, asset_id2], function(rows){
+	db.query("SELECT pair_id FROM pairs WHERE asset_id1=? AND asset_id2=? AND is_delisted=0", [asset_id1, asset_id2], function(rows){
 		(rows.length === 0) ? handleResult("no such pair") : handleResult(null, rows[0].pair_id);
 	});
 }
@@ -114,6 +114,7 @@ function readAvailablePairs(handlePairs){
 		JOIN asset_indexes AS asset_indexes2 ON asset_id2=asset_indexes2.asset_id \n\
 		LEFT JOIN aliases AS aliases1 ON asset_id1=aliases1.asset_id AND aliases1.is_default=1 \n\
 		LEFT JOIN aliases AS aliases2 ON asset_id2=aliases2.asset_id AND aliases2.is_default=1 \n\
+		WHERE is_delisted=0 \n\
 		ORDER BY pair_id",
 		function(rows){
 			let arrPairs = rows.map((row) => row.asset1 + '/' + row.asset2);
@@ -169,6 +170,8 @@ eventBus.on('text', function(from_address, text){
 							if (err)
 								return sendMessageToDevice(from_address, err);
 							book.readPairProps(data.permanent.pair_id, function(objAsset1, objAsset2, multiplier){
+								if (!objAsset1)
+									return sendMessageToDevice(from_address, 'The pair is delisted');
 								let in_asset = (order_type === 'buy') ? objAsset2.asset : objAsset1.asset;
 								var arrPayments = [];
 								var assocDefinitions = {};
@@ -207,6 +210,8 @@ eventBus.on('text', function(from_address, text){
 					let count_lots = book.getLots(amount).length;
 					let total_fee = fee * count_lots;
 					book.readPairProps(data.permanent.pair_id, function(objAsset1, objAsset2){
+						if (!objAsset1)
+							return sendMessageToDevice(from_address, 'The pair is delisted');
 						let price_multiplier = Math.pow(10, objAsset2.decimals - objAsset1.decimals); // from display to internal
 						let display_amount = (amount / Math.pow(10, objAsset1.decimals)).toLocaleString([], {maximumFractionDigits: objAsset1.decimals});
 						sendMessageToDevice(from_address, (order_type === 'buy' ? 'Buying ' : 'Selling ') + display_amount + ' ' + alias1 + '/' + alias2 + ' at '+(data.temp.price.value/price_multiplier) + ", you'll receive "+(order_type === 'buy' ? alias1 : alias2)+" to your address " + data.temp.address.value + ".\n"+count_lots+" orders will be placed, the fee is "+fee+" bytes per each, total fee is "+total_fee+" bytes.\nPlease confirm. [Confirm](command:confirm)");
@@ -222,6 +227,8 @@ eventBus.on('text', function(from_address, text){
 					sendMessageToDevice(from_address, 'What are you going to do? Say, for example, "buy 100", or "sell 200"');
 				else if (!bHavePrice){
 					book.readPairProps(data.permanent.pair_id, function(objAsset1, objAsset2, multiplier){
+						if (!objAsset1)
+							return sendMessageToDevice(from_address, 'The pair is delisted');
 						let price_multiplier = Math.pow(10, objAsset2.decimals - objAsset1.decimals); // from display to internal
 						book.readBidAsk(data.permanent.pair_id, function(bid, ask){
 							let order_type = data.temp.order_type.value;
@@ -299,6 +306,10 @@ eventBus.on('text', function(from_address, text){
 			if (!display_amount || isNaN(display_amount))
 				return cb();
 			book.readPairProps(data.permanent.pair_id, function(objAsset1, objAsset2, multiplier, amount_increment){
+				if (!objAsset1){
+					arrResponses.push('The pair is delisted');
+					return cb();
+				}
 				let asset1_multiplier = Math.pow(10, objAsset1.decimals);
 				let amount = Math.round(display_amount * asset1_multiplier);
 				let adjusted_amount = Math.round(amount/amount_increment)*amount_increment;
@@ -328,6 +339,10 @@ eventBus.on('text', function(from_address, text){
 			if (!display_price || isNaN(display_price))
 				return cb();
 			book.readPairProps(data.permanent.pair_id, function(objAsset1, objAsset2, multiplier){
+				if (!objAsset1){
+					arrResponses.push('The pair is delisted');
+					return cb();
+				}
 				let price_multiplier = Math.pow(10, objAsset2.decimals - objAsset1.decimals); // from display to internal
 				let price = display_price * price_multiplier;
 				let adjusted_price = Math.round(price*multiplier)/multiplier;
@@ -409,6 +424,8 @@ eventBus.on('text', function(from_address, text){
 				if (!data.permanent.pair_id)
 					return sendMessageToDevice(from_address, "To see the book, please choose a pair first");
 				book.readPairProps(data.permanent.pair_id, function(objAsset1, objAsset2){
+					if (!objAsset1)
+						return sendMessageToDevice(from_address, 'The pair is delisted');
 					let price_multiplier = Math.pow(10, objAsset2.decimals - objAsset1.decimals); // from display to internal
 					let asset1_multiplier = Math.pow(10, objAsset1.decimals);
 					let and_device = (lc_text === 'book') ? '' : ' AND device_address=? ';

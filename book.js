@@ -41,7 +41,7 @@ function readBidAsk(pair_id, handleMinMaxPrices){
 
 function readPairProps(pair_id, handleProps){
 	db.query(
-		"SELECT asset_indexes1.asset AS asset1, asset_indexes2.asset AS asset2, multiplier, amount_increment, \n\
+		"SELECT asset_indexes1.asset AS asset1, asset_indexes2.asset AS asset2, multiplier, amount_increment, is_delisted, \n\
 			aliases1.alias AS alias1, aliases2.alias AS alias2, \n\
 			aliases1.decimals AS decimals1, aliases2.decimals AS decimals2 \n\
 		FROM pairs \n\
@@ -55,6 +55,8 @@ function readPairProps(pair_id, handleProps){
 			if (rows.length !== 1)
 				throw Error('not 1 pair');
 			let row = rows[0];
+			if (row.is_delisted)
+				return handleProps();
 			let objAsset1 = {
 				asset: row.asset1 || 'base',
 				alias: row.alias1,
@@ -249,6 +251,8 @@ function matchOrders(pair_id, onDone){
 			if (max_int_buy_price < min_int_sell_price)
 				return onDone();
 			readPairProps(pair_id, function(objAsset1, objAsset2){
+				if (!objAsset1) // delisted
+					return onDone();
 				let asset1 = objAsset1.asset;
 				let asset2 = objAsset2.asset;
 				db.query(
@@ -435,6 +439,8 @@ function handleOrder(pair_id, order_type, price, amount, address, device_address
 	var walletDefinedByAddresses = require('byteballcore/wallet_defined_by_addresses.js');
 	var device = require('byteballcore/device.js');
 	readPairProps(pair_id, function(objAsset1, objAsset2, multiplier){
+		if (!objAsset1)
+			return handleResult("the pair is delisted");
 		let asset1 = objAsset1.asset;
 		let asset2 = objAsset2.asset;
 		let int_price = Math.round(price*multiplier);
