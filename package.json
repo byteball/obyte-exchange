@@ -23,7 +23,7 @@
   "dependencies": {
     "async": "^1.5.2",
     "lodash": "^4.6.1",
-    "byteballcore": "^0.2.1",
+    "byteballcore": "git+https://github.com/byteball/byteballcore.git",
     "headless-byteball": "git+https://github.com/byteball/headless-byteball.git",
     "byteball-witness": "git+https://github.com/byteball/byteball-witness.git"
   }
