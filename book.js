@@ -78,6 +78,7 @@ function pricesCross(row1, row2){
 
 function findMatches(rows, onDone){
 	var arrMatches = [];
+	var total_count_authors = 0;
 	
 	function findExactMatches(rows){
 		var first = rows[0];
@@ -95,9 +96,10 @@ function findMatches(rows, onDone){
 			objMatch[first.order_type] = [first];
 			objMatch[counterpart.order_type] = [counterpart];
 			arrMatches.push(objMatch);
+			total_count_authors += 2;
 			rows.splice(counterpart_index, 1); // remove counterpart from the array
 			rows.shift(); // remove first element
-			(rows.length > 1) ? findExactMatches(rows) : onDone(arrMatches);
+			(rows.length > 1 && total_count_authors <= constants.MAX_AUTHORS_PER_UNIT-2) ? findExactMatches(rows) : onDone(arrMatches);
 		}
 		else
 			findSumMatches(rows);
@@ -110,7 +112,6 @@ function findMatches(rows, onDone){
 			return onDone(arrMatches);
 		arrSellers.sort(sortByAmountDescFeeDesc);
 		arrBuyers.sort(sortByAmountDescFeeDesc);
-		var total_count_authors = 0;
 		var max_count = arrSellers.length + arrBuyers.length;
 		while (arrSellers.length > 0 && arrBuyers.length > 0){
 			if (max_count < 0)
