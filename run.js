@@ -240,29 +240,35 @@ eventBus.on('text', function(from_address, text){
 							}
 							var message = "What price would you like to "+order_type+" at?";
 							if (order_type === 'buy'){
-								if (ask)
-									message += "\n[at "+(ask/price_multiplier)+"](command:at "+(ask/price_multiplier)+") - fast";
+								if (ask){
+									let display_ask_price = (ask/price_multiplier).toLocaleString([], {maximumFractionDigits: 20});
+									message += "\n[at "+display_ask_price+"](command:at "+display_ask_price+") - fast";
+								}
 								if (!bid && ask) // set fake bid at 99% min sell
 									bid = Math.round((ask*0.99)*multiplier)/multiplier;
 								if (bid){
 									let front_running_price = bCanFrontRun ? (bid+1/multiplier) : bid;
-									message += "\n[at "+(front_running_price/price_multiplier)+"](command:at "+(front_running_price/price_multiplier)+") - have to wait";
+									let display_front_running_price = (front_running_price/price_multiplier).toLocaleString([], {maximumFractionDigits: 20});
+									message += "\n[at "+display_front_running_price+"](command:at "+display_front_running_price+") - have to wait";
 									let example_price = Math.round((bid*0.99)*multiplier)/multiplier;
-									message += '\nOr type your price, e.g. "at '+(example_price/price_multiplier)+'", the lower your price, the longer you\'ll have to wait';
+									message += '\nOr type your price, e.g. "at '+(example_price/price_multiplier).toLocaleString([], {maximumFractionDigits: 20})+'", the lower your price, the longer you\'ll have to wait';
 								}
 								else
 									message += '\nType your price, e.g. "at 1.2345", the lower your price, the longer you\'ll have to wait';
 							}
 							else{
-								if (bid)
-									message += "\n[at "+(bid/price_multiplier)+"](command:at "+(bid/price_multiplier)+") - fast";
+								if (bid){
+									let display_bid_price = (bid/price_multiplier).toLocaleString([], {maximumFractionDigits: 20});
+									message += "\n[at "+display_bid_price+"](command:at "+display_bid_price+") - fast";
+								}
 								if (!ask && bid) // set fake ask at 101% max buy
 									ask = Math.round((bid*1.01)*multiplier)/multiplier;
 								if (ask){
 									let front_running_price = bCanFrontRun ? (ask-1/multiplier) : ask;
-									message += "\n[at "+(front_running_price/price_multiplier)+"](command:at "+(front_running_price/price_multiplier)+") - have to wait";
+									let display_front_running_price = (front_running_price/price_multiplier).toLocaleString([], {maximumFractionDigits: 20});
+									message += "\n[at "+display_front_running_price+"](command:at "+display_front_running_price+") - have to wait";
 									let example_price = Math.round((ask*1.01)*multiplier)/multiplier;
-									message += '\nOr type your price, e.g. "at '+(example_price/price_multiplier)+'", the higher your price, the longer you\'ll have to wait';
+									message += '\nOr type your price, e.g. "at '+(example_price/price_multiplier).toLocaleString([], {maximumFractionDigits: 20})+'", the higher your price, the longer you\'ll have to wait';
 								}
 								else
 									message += '\nType your price, e.g. "at 1.2345", the higher your price, the longer you\'ll have to wait';
