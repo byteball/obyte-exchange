@@ -2,15 +2,15 @@
 "use strict";
 var _ = require('lodash');
 var async = require('async');
-var constants = require('byteballcore/constants.js');
-var conf = require('byteballcore/conf.js');
-var mutex = require('byteballcore/mutex.js');
-var objectHash = require('byteballcore/object_hash.js');
-var db = require('byteballcore/db.js');
-var eventBus = require('byteballcore/event_bus.js');
-var mail = require('byteballcore/mail.js');
-var headlessWallet = require('headless-byteball');
-var desktopApp = require('byteballcore/desktop_app.js');
+var constants = require('ocore/constants.js');
+var conf = require('ocore/conf.js');
+var mutex = require('ocore/mutex.js');
+var objectHash = require('ocore/object_hash.js');
+var db = require('ocore/db.js');
+var eventBus = require('ocore/event_bus.js');
+var mail = require('ocore/mail.js');
+var headlessWallet = require('headless-obyte');
+var desktopApp = require('ocore/desktop_app.js');
 
 const MIN_FEE = 1000;
 const ORDER_TERM = 3600 * 1000;
@@ -170,7 +170,7 @@ function findMatches(rows, onDone){
 }
 
 function createPaymentMessage(asset, inputs, outputs){
-	var composer = require('byteballcore/composer.js');
+	var composer = require('ocore/composer.js');
 	var payload = {
 		asset: asset,
 		inputs: inputs,
@@ -206,7 +206,6 @@ var signer = {
 				var row = rows[0];
 				if (row.member_signing_path !== 'r')
 					throw Error('member address is not plain single-sig');
-				var headlessWallet = require('headless-byteball');
 				headlessWallet.signer.sign(objUnsignedUnit, assocPrivatePayloads, row.address, row.member_signing_path, handleSignature);
 			}
 		);
@@ -240,9 +239,9 @@ function cancelSpentOrders(onDone){
 }
 
 function matchOrders(pair_id, onDone){
-	var composer = require('byteballcore/composer.js');
-	var network = require('byteballcore/network.js');
-	var walletGeneral = require('byteballcore/wallet_general.js');
+	var composer = require('ocore/composer.js');
+	var network = require('ocore/network.js');
+	var walletGeneral = require('ocore/wallet_general.js');
 	readMinSellPrice(pair_id, 'int_price', function(min_int_sell_price){
 		if (min_int_sell_price === null)
 			return onDone();
@@ -437,8 +436,8 @@ function getLots(amount){
 }
 
 function handleOrder(pair_id, order_type, price, amount, address, device_address, handleResult){
-	var walletDefinedByAddresses = require('byteballcore/wallet_defined_by_addresses.js');
-	var device = require('byteballcore/device.js');
+	var walletDefinedByAddresses = require('ocore/wallet_defined_by_addresses.js');
+	var device = require('ocore/device.js');
 	readPairProps(pair_id, function(objAsset1, objAsset2, multiplier){
 		if (!objAsset1)
 			return handleResult("the pair is delisted");
@@ -625,7 +624,7 @@ eventBus.on('new_my_transactions', function(arrUnits){
 						}
 					});
 				}, function(){
-					var device = require('byteballcore/device.js');
+					var device = require('ocore/device.js');
 					for (var device_address in assocAmountsByDeviceAndAlias)
 						for (var alias in assocAmountsByDeviceAndAlias[device_address])
 							device.sendMessageToDevice(device_address, 'text', "Received "+assocAmountsByDeviceAndAlias[device_address][alias].toLocaleString([], {maximumFractionDigits: assocDecimalsByAlias[alias]})+" "+alias+", will add your order to the [book](command:book) after the transaction is final.");
@@ -645,7 +644,7 @@ eventBus.on('my_transactions_became_stable', function(arrUnits){
 				if (rows.length === 0)
 					return;
 				let arrDeviceAddresses = _.uniq(rows.map(row => row.device_address));
-				var device = require('byteballcore/device.js');
+				var device = require('ocore/device.js');
 				arrDeviceAddresses.forEach(device_address => {
 					device.sendMessageToDevice(device_address, 'text', "The transaction is now final and you can see your order in the [book](command:book).  To view only your orders, say [orders](command:orders)");
 				});
@@ -668,7 +667,7 @@ eventBus.once('headless_wallet_ready', function(){
 	initOperatorAddress(() => {
 		matchOrdersUnderLock(1);
 	});
-//	var network = require('byteballcore/network.js');
+//	var network = require('ocore/network.js');
 //	network.requestHistoryFor(['f2TMkqij/E3qx3ALfVBA8q5ve5xAwimUm92UrEribIE=', '1OLPCz72F1rJ7IGtmEMuV1LvfLawT9WGOFuHugW2b7c='], []);
 });
 

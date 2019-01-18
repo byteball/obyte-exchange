@@ -1,20 +1,23 @@
 {
-  "name": "byteball-exchange",
-  "description": "Byteball exchange",
-  "author": "Byteball",
+  "name": "obyte-exchange",
+  "description": "Obyte exchange",
+  "author": "Obyte",
   "version": "0.1.1",
   "main": "run.js",
   "keywords": [
     "exchange",
+    "obyte",
+    "DAG",
+    "DEX",
     "byteball"
   ],
   "license": "MIT",
   "repository": {
-    "url": "git://github.com/byteball/byteball-exchange.git",
+    "url": "git://github.com/byteball/obyte-exchange.git",
     "type": "git"
   },
   "bugs": {
-    "url": "https://github.com/byteball/byteball-exchange/issues"
+    "url": "https://github.com/byteball/obyte-exchange/issues"
   },
   "browser": {
     "request": "browser-request",
@@ -23,8 +26,8 @@
   "dependencies": {
     "async": "^1.5.2",
     "lodash": "^4.6.1",
-    "byteballcore": "git+https://github.com/byteball/byteballcore.git",
-    "headless-byteball": "git+https://github.com/byteball/headless-byteball.git",
-    "byteball-witness": "git+https://github.com/byteball/byteball-witness.git"
+    "ocore": "git+https://github.com/byteball/ocore.git",
+    "headless-obyte": "git+https://github.com/byteball/headless-obyte.git",
+    "obyte-witness": "git+https://github.com/byteball/obyte-witness.git"
   }
 }
