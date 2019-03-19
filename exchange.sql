@@ -11,6 +11,7 @@ INSERT INTO asset_indexes (asset_id, asset) VALUES (2, 'f2TMkqij/E3qx3ALfVBA8q5v
 INSERT INTO asset_indexes (asset_id, asset) VALUES (3, '1OLPCz72F1rJ7IGtmEMuV1LvfLawT9WGOFuHugW2b7c=');  -- SNTR
 INSERT INTO asset_indexes (asset_id, asset) VALUES (4, 'pZML61kxjqV2TcMMGr1z3z0jvAkDcOwdGzxoXjsV52Q=');  -- LWC
 INSERT INTO asset_indexes (asset_id, asset) VALUES (5, 'oF9wmH31QDL/VXppOJ9mHISrvcdJQ1rqU+Jv8GRQH84=');  -- CHM
+INSERT INTO asset_indexes (asset_id, asset) VALUES (6, 'NMuNvOJRO2ZY9L17uKtsa7OYkgsV8LfSBIV9BUoVJPQ=');  -- FUTURE
 
 CREATE TABLE aliases (
 	alias_id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
@@ -28,6 +29,7 @@ INSERT INTO aliases (asset_id, alias, decimals, is_default) VALUES (2, 'TC', 6, 
 INSERT INTO aliases (asset_id, alias, decimals, is_default) VALUES (3, 'SNTR', 4, 1), (3, 'SilentNotary', 4, NULL);
 INSERT INTO aliases (asset_id, alias, decimals, is_default) VALUES (4, 'LWC', 4, 1), (4, 'WhiteLittle', 4, NULL);
 INSERT INTO aliases (asset_id, alias, decimals, is_default) VALUES (5, 'CHM', 6, 1), (5, 'Charm', 6, NULL);
+INSERT INTO aliases (asset_id, alias, decimals, is_default) VALUES (6, 'FUTURE', 0, 1);
 
 CREATE TABLE pairs (
 	pair_id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
@@ -49,6 +51,7 @@ INSERT INTO pairs (asset_id1, asset_id2, pip, multiplier, amount_increment) VALU
 INSERT INTO pairs (asset_id1, asset_id2, pip, multiplier, amount_increment) VALUES (3, 1, 0.00001, 100000, 131072);
 INSERT INTO pairs (asset_id1, asset_id2, pip, multiplier, amount_increment) VALUES (4, 1, 0.00001, 100000, 131072);
 INSERT INTO pairs (asset_id1, asset_id2, pip, multiplier, amount_increment) VALUES (5, 1, 0.000001, 1000000, 134217728);
+INSERT INTO pairs (asset_id1, asset_id2, pip, multiplier, amount_increment) VALUES (6, 1, 1, 1, 1);
 
 CREATE TABLE deals (
 	deal_id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
