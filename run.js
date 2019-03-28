@@ -128,7 +128,7 @@ function readAvailablePairs(handlePairs){
 		function(rows){
 			let arrPairs = rows.map((row) => row.asset1 + '/' + row.asset2);
 			let arrCommands = arrPairs.map((pair) => '['+pair+'](command:'+pair+')');
-			handlePairs(arrCommands.join(', '));
+			handlePairs(arrCommands.join("\n"));
 		}
 	);
 }
@@ -233,7 +233,7 @@ eventBus.on('text', function(from_address, text){
 				if (!bHavePair)
 					printPairs(from_address);
 				else if (!bHaveOrder)
-					sendMessageToDevice(from_address, 'What are you going to do? Say, for example, "buy 100", or "sell 200"');
+					sendMessageToDevice(from_address, 'What are you going to do? Say, for example, "buy 100", or "sell 200". Type [help](command:help) for additional commands.');
 				else if (!bHavePrice){
 					book.readPairProps(data.permanent.pair_id, function(objAsset1, objAsset2, multiplier){
 						if (!objAsset1)
@@ -249,8 +249,9 @@ eventBus.on('text', function(from_address, text){
 							}
 							var message = "What price would you like to "+order_type+" at?";
 							if (order_type === 'buy'){
+								let display_ask_price;
 								if (ask){
-									let display_ask_price = (ask/price_multiplier).toLocaleString([], {maximumFractionDigits: 20});
+									display_ask_price = (ask/price_multiplier).toLocaleString([], {maximumFractionDigits: 20});
 									message += "\n[at "+display_ask_price+"](command:at "+display_ask_price+") - fast";
 								}
 								if (!bid && ask) // set fake bid at 99% min sell
@@ -258,7 +259,9 @@ eventBus.on('text', function(from_address, text){
 								if (bid){
 									let front_running_price = bCanFrontRun ? (bid+1/multiplier) : bid;
 									let display_front_running_price = (front_running_price/price_multiplier).toLocaleString([], {maximumFractionDigits: 20});
-									message += "\n[at "+display_front_running_price+"](command:at "+display_front_running_price+") - have to wait";
+									if (!display_ask_price || display_ask_price !== display_front_running_price) {
+										message += "\n[at "+display_front_running_price+"](command:at "+display_front_running_price+") - have to wait";
+									}
 									let example_price = Math.round((bid*0.99)*multiplier)/multiplier;
 									message += '\nOr type your price, e.g. "at '+(example_price/price_multiplier).toLocaleString([], {maximumFractionDigits: 20})+'", the lower your price, the longer you\'ll have to wait';
 								}
@@ -266,8 +269,9 @@ eventBus.on('text', function(from_address, text){
 									message += '\nType your price, e.g. "at 1.2345", the lower your price, the longer you\'ll have to wait';
 							}
 							else{
+								let display_bid_price;
 								if (bid){
-									let display_bid_price = (bid/price_multiplier).toLocaleString([], {maximumFractionDigits: 20});
+									display_bid_price = (bid/price_multiplier).toLocaleString([], {maximumFractionDigits: 20});
 									message += "\n[at "+display_bid_price+"](command:at "+display_bid_price+") - fast";
 								}
 								if (!ask && bid) // set fake ask at 101% max buy
@@ -275,7 +279,9 @@ eventBus.on('text', function(from_address, text){
 								if (ask){
 									let front_running_price = bCanFrontRun ? (ask-1/multiplier) : ask;
 									let display_front_running_price = (front_running_price/price_multiplier).toLocaleString([], {maximumFractionDigits: 20});
-									message += "\n[at "+display_front_running_price+"](command:at "+display_front_running_price+") - have to wait";
+									if (!display_bid_price || display_bid_price ==! display_front_running_price) {
+										message += "\n[at "+display_front_running_price+"](command:at "+display_front_running_price+") - have to wait";
+									}
 									let example_price = Math.round((ask*1.01)*multiplier)/multiplier;
 									message += '\nOr type your price, e.g. "at '+(example_price/price_multiplier).toLocaleString([], {maximumFractionDigits: 20})+'", the higher your price, the longer you\'ll have to wait';
 								}
@@ -445,22 +451,39 @@ eventBus.on('text', function(from_address, text){
 					let asset1_multiplier = Math.pow(10, objAsset1.decimals);
 					let and_device = (lc_text === 'book') ? '' : ' AND device_address=? ';
 					var params = [data.permanent.pair_id];
-					if (lc_text === 'orders')
+					var response = data.permanent.alias1 +'/'+ data.permanent.alias2 + " order book:\n";
+					if (lc_text === 'orders') {
+						response = "Your orders:\n";
 						params.push(from_address);
+					}
 					db.query(
 						"SELECT price, order_type, SUM(amount) AS total FROM orders WHERE is_active=1 AND pair_id=? "+and_device+" \n\
-						GROUP BY price, order_type ORDER BY price DESC, order_type DESC",
+						GROUP BY price, order_type ORDER BY order_type DESC, price DESC;",
 						params,
 						function(rows){
 							var arrLines = [];
 							var prev_order_type;
 							rows.forEach(row => {
 								if (prev_order_type && prev_order_type !== row.order_type)
-									arrLines.push('');
-								arrLines.push("At "+(row.price/price_multiplier)+" "+row.order_type+" vol. "+(row.total/asset1_multiplier).toLocaleString([], {maximumFractionDigits: objAsset1.decimals}));
+									arrLines.push('-----------------------');
+								var price = row.price/price_multiplier;
+								var vol = (row.total/asset1_multiplier).toLocaleString([], {maximumFractionDigits: objAsset1.decimals});
+								if (lc_text === 'orders') {
+									arrLines.push("At "+ price +" "+ row.order_type +"ing vol. "+ vol);
+								}
+								else {
+									arrLines.push("At ["+ price +"](suggest-command:buy "+ vol +" at "+ price +") "+ row.order_type +"ing vol. "+ vol);
+								}
 								prev_order_type = row.order_type;
 							});
-							sendMessageToDevice(from_address, arrLines.join("\n") || "No orders at this time.");
+							if (arrLines.length) {
+								response += arrLines.join("\n");
+							}
+							else {
+								response += "No orders at this time.\n"
+							}
+							response += "\nType [help](command:help) for additional commands.";
+							sendMessageToDevice(from_address, response);
 						}
 					);
 				});
@@ -470,7 +493,7 @@ eventBus.on('text', function(from_address, text){
 				return printPairs(from_address);
 				
 			case 'help':
-				return sendMessageToDevice(from_address, "Use the following commands:\n[pairs](command:pairs): switch to another trading pair;\n[book](command:book): print the order book;\n[orders](command:orders): print your own pending orders;\nbuy <amount>: create a buy order;\nsell <amount>: create a sell order;\nat <price>: set the current buy or sell price.")
+				return sendMessageToDevice(from_address, "Use the following commands:\n[pairs](command:pairs): see available trading pairs;\nasset1/asset2: switch to another trading pair separated by slash.\n[book](command:book): print the order book;\n[orders](command:orders): print your own pending orders;\nbuy <amount>: create a buy order;\nsell <amount>: create a sell order;\nat <price>: set the current buy or sell price.")
 		}
 	
 		async.series([handlePair, handleOrderTypeAndAmount, handlePrice, handleAddress, handleFee, handleKnownData, updateSessionIfNecessary]);
