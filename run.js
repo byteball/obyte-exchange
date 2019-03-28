@@ -252,19 +252,19 @@ eventBus.on('text', function(from_address, text){
 							if (order_type === 'buy'){
 								let display_ask_price;
 								if (ask){
-									display_ask_price = (ask/price_multiplier).toLocaleString([], {maximumFractionDigits: 20});
+									display_ask_price = (ask/price_multiplier).toLocaleString(['en-US'], {useGrouping: false, maximumFractionDigits: 20});
 									message += "\n[at "+display_ask_price+"](command:at "+display_ask_price+") - fast";
 								}
 								if (!bid && ask) // set fake bid at 99% min sell
 									bid = Math.round((ask*0.99)*multiplier)/multiplier;
 								if (bid){
 									let front_running_price = bCanFrontRun ? (bid+1/multiplier) : bid;
-									let display_front_running_price = (front_running_price/price_multiplier).toLocaleString([], {maximumFractionDigits: 20});
+									let display_front_running_price = (front_running_price/price_multiplier).toLocaleString(['en-US'], {useGrouping: false, maximumFractionDigits: 20});
 									if (!display_ask_price || display_ask_price !== display_front_running_price) {
 										message += "\n[at "+display_front_running_price+"](command:at "+display_front_running_price+") - have to wait";
 									}
 									let example_price = Math.round((bid*0.99)*multiplier)/multiplier;
-									message += '\nOr type your price, e.g. "at '+(example_price/price_multiplier).toLocaleString([], {maximumFractionDigits: 20})+'", the lower your price, the longer you\'ll have to wait';
+									message += '\nOr type your price, e.g. "at '+(example_price/price_multiplier).toLocaleString(['en-US'], {useGrouping: false, maximumFractionDigits: 20})+'", the lower your price, the longer you\'ll have to wait';
 								}
 								else
 									message += '\nType your price, e.g. "at 1.2345", the lower your price, the longer you\'ll have to wait';
@@ -272,19 +272,19 @@ eventBus.on('text', function(from_address, text){
 							else{
 								let display_bid_price;
 								if (bid){
-									display_bid_price = (bid/price_multiplier).toLocaleString([], {maximumFractionDigits: 20});
+									display_bid_price = (bid/price_multiplier).toLocaleString(['en-US'], {useGrouping: false, maximumFractionDigits: 20});
 									message += "\n[at "+display_bid_price+"](command:at "+display_bid_price+") - fast";
 								}
 								if (!ask && bid) // set fake ask at 101% max buy
 									ask = Math.round((bid*1.01)*multiplier)/multiplier;
 								if (ask){
 									let front_running_price = bCanFrontRun ? (ask-1/multiplier) : ask;
-									let display_front_running_price = (front_running_price/price_multiplier).toLocaleString([], {maximumFractionDigits: 20});
+									let display_front_running_price = (front_running_price/price_multiplier).toLocaleString(['en-US'], {useGrouping: false, maximumFractionDigits: 20});
 									if (!display_bid_price || display_bid_price ==! display_front_running_price) {
 										message += "\n[at "+display_front_running_price+"](command:at "+display_front_running_price+") - have to wait";
 									}
 									let example_price = Math.round((ask*1.01)*multiplier)/multiplier;
-									message += '\nOr type your price, e.g. "at '+(example_price/price_multiplier).toLocaleString([], {maximumFractionDigits: 20})+'", the higher your price, the longer you\'ll have to wait';
+									message += '\nOr type your price, e.g. "at '+(example_price/price_multiplier).toLocaleString(['en-US'], {useGrouping: false, maximumFractionDigits: 20})+'", the higher your price, the longer you\'ll have to wait';
 								}
 								else
 									message += '\nType your price, e.g. "at 1.2345", the higher your price, the longer you\'ll have to wait';
@@ -369,6 +369,10 @@ eventBus.on('text', function(from_address, text){
 				let price = display_price * price_multiplier;
 				let adjusted_price = Math.round(price*multiplier)/multiplier;
 				console.error('price '+price+', adjusted '+adjusted_price);
+				if (!adjusted_price) {
+					arrResponses.push('Price too low');
+					return cb();
+				}
 				var response = "Price set to "+(adjusted_price/price_multiplier)+(data.permanent.alias1 ? (" "+data.permanent.alias2+" per "+data.permanent.alias1) : "");
 				if (price !== adjusted_price)
 					response += ' (price adjusted to the closest allowed level)';
@@ -468,12 +472,13 @@ eventBus.on('text', function(from_address, text){
 								if (prev_order_type && prev_order_type !== row.order_type)
 									arrLines.push('-----------------------');
 								var price = row.price/price_multiplier;
-								var vol = (row.total/asset1_multiplier).toLocaleString([], {maximumFractionDigits: objAsset1.decimals});
+								var vol_display = (row.total/asset1_multiplier).toLocaleString([], {maximumFractionDigits: objAsset1.decimals});
+								var vol_value = (row.total/asset1_multiplier).toLocaleString(['en-US'], {useGrouping: false, maximumFractionDigits: objAsset1.decimals});
 								if (lc_text === 'orders') {
-									arrLines.push("At "+ price +" "+ row.order_type +"ing vol. "+ vol);
+									arrLines.push("At "+ price +" "+ row.order_type +"ing vol. "+ vol_display);
 								}
 								else {
-									arrLines.push("At ["+ price +"](suggest-command:"+ (row.order_type === 'buy' ? 'sell' : 'buy')  +" " + vol +" at "+ price +") "+ row.order_type +"ing vol. "+ vol);
+									arrLines.push("At ["+ price +"](suggest-command:"+ (row.order_type === 'buy' ? 'sell' : 'buy')  +" " + vol_value +" at "+ price +") "+ row.order_type +"ing vol. "+ vol_display);
 								}
 								prev_order_type = row.order_type;
 							});
