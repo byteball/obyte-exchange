@@ -223,7 +223,8 @@ eventBus.on('text', function(from_address, text){
 							return sendMessageToDevice(from_address, 'The pair is delisted');
 						let price_multiplier = Math.pow(10, objAsset2.decimals - objAsset1.decimals); // from display to internal
 						let display_amount = (amount / Math.pow(10, objAsset1.decimals)).toLocaleString([], {maximumFractionDigits: objAsset1.decimals});
-						sendMessageToDevice(from_address, (order_type === 'buy' ? 'Buying ' : 'Selling ') + display_amount + ' ' + alias1 + '/' + alias2 + ' at '+(data.temp.price.value/price_multiplier) + ", you'll receive "+(order_type === 'buy' ? alias1 : alias2)+" to your address " + data.temp.address.value + ".\n"+count_lots+" orders will be placed, the fee is "+fee+" bytes per each, total fee is "+total_fee+" bytes.\nPlease confirm. [Confirm](command:confirm)");
+						let worth_total = (data.temp.price.value/price_multiplier * amount / Math.pow(10, objAsset1.decimals)).toLocaleString([], {maximumFractionDigits: objAsset2.decimals});
+						sendMessageToDevice(from_address, (order_type === 'buy' ? 'Buying ' : 'Selling ') + display_amount + ' ' + alias1 + ' at '+(data.temp.price.value/price_multiplier) + alias2 + ", total worth "+ worth_total + alias2 +". You'll receive "+(order_type === 'buy' ? alias1 : alias2)+" to your address " + data.temp.address.value + ".\n"+count_lots+" orders will be placed, the fee is "+fee+" bytes per each, total fee is "+total_fee+" bytes.\nPlease confirm. [Confirm](command:confirm)");
 					});
 				}
 			}
@@ -472,7 +473,7 @@ eventBus.on('text', function(from_address, text){
 									arrLines.push("At "+ price +" "+ row.order_type +"ing vol. "+ vol);
 								}
 								else {
-									arrLines.push("At ["+ price +"](suggest-command:buy "+ vol +" at "+ price +") "+ row.order_type +"ing vol. "+ vol);
+									arrLines.push("At ["+ price +"](suggest-command:"+ (row.order_type === 'buy' ? 'sell' : 'buy')  +" " + vol +" at "+ price +") "+ row.order_type +"ing vol. "+ vol);
 								}
 								prev_order_type = row.order_type;
 							});
