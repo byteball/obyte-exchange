@@ -224,7 +224,7 @@ eventBus.on('text', function(from_address, text){
 						let price_multiplier = Math.pow(10, objAsset2.decimals - objAsset1.decimals); // from display to internal
 						let display_amount = (amount / Math.pow(10, objAsset1.decimals)).toLocaleString([], {maximumFractionDigits: objAsset1.decimals});
 						let worth_total = (data.temp.price.value/price_multiplier * amount / Math.pow(10, objAsset1.decimals)).toLocaleString([], {maximumFractionDigits: objAsset2.decimals});
-						sendMessageToDevice(from_address, (order_type === 'buy' ? 'Buying ' : 'Selling ') + display_amount + ' ' + alias1 + ' at '+(data.temp.price.value/price_multiplier) + alias2 + ", total worth "+ worth_total + alias2 +". You'll receive "+(order_type === 'buy' ? alias1 : alias2)+" to your address " + data.temp.address.value + ".\n"+count_lots+" orders will be placed, the fee is "+fee+" bytes per each, total fee is "+total_fee+" bytes.\nPlease confirm. [Confirm](command:confirm)");
+						sendMessageToDevice(from_address, (order_type === 'buy' ? 'Buying ' : 'Selling ') + display_amount + ' ' + alias1 + ' at '+(data.temp.price.value/price_multiplier).toLocaleString([], {maximumFractionDigits: objAsset2.decimals}) + alias2 + ", total worth "+ worth_total + alias2 +". You'll receive "+(order_type === 'buy' ? alias1 : alias2)+" to your address " + data.temp.address.value + ".\n"+count_lots+" orders will be placed, the fee is "+fee+" bytes per each, total fee is "+total_fee+" bytes.\nPlease confirm. [Confirm](command:confirm)");
 					});
 				}
 			}
@@ -373,7 +373,7 @@ eventBus.on('text', function(from_address, text){
 					arrResponses.push('Price too low');
 					return cb();
 				}
-				var response = "Price set to "+(adjusted_price/price_multiplier)+(data.permanent.alias1 ? (" "+data.permanent.alias2+" per "+data.permanent.alias1) : "");
+				var response = "Price set to "+(adjusted_price/price_multiplier).toLocaleString([], {maximumFractionDigits: objAsset2.decimals})+(data.permanent.alias1 ? (" "+data.permanent.alias2+" per "+data.permanent.alias1) : "");
 				if (price !== adjusted_price)
 					response += ' (price adjusted to the closest allowed level)';
 				updateTempData(data, 'price', adjusted_price);
@@ -471,14 +471,15 @@ eventBus.on('text', function(from_address, text){
 							rows.forEach(row => {
 								if (prev_order_type && prev_order_type !== row.order_type)
 									arrLines.push('-----------------------');
-								var price = row.price/price_multiplier;
-								var vol_display = (row.total/asset1_multiplier).toLocaleString([], {maximumFractionDigits: objAsset1.decimals});
+								var price_value = (row.price/price_multiplier).toLocaleString(['en-US'], {useGrouping: false, maximumFractionDigits: objAsset2.decimals});
+								var price_display = (price_value).toLocaleString([], {maximumFractionDigits: objAsset2.decimals});
 								var vol_value = (row.total/asset1_multiplier).toLocaleString(['en-US'], {useGrouping: false, maximumFractionDigits: objAsset1.decimals});
+								var vol_display = (vol_value).toLocaleString([], {maximumFractionDigits: objAsset1.decimals});
 								if (lc_text === 'orders') {
-									arrLines.push("At "+ price +" "+ row.order_type +"ing vol. "+ vol_display);
+									arrLines.push("At "+ price_display +" "+ row.order_type +"ing vol. "+ vol_display);
 								}
 								else {
-									arrLines.push("At ["+ price +"](suggest-command:"+ (row.order_type === 'buy' ? 'sell' : 'buy')  +" " + vol_value +" at "+ price +") "+ row.order_type +"ing vol. "+ vol_display);
+									arrLines.push("At ["+ price_display +"](suggest-command:"+ (row.order_type === 'buy' ? 'sell' : 'buy')  +" " + vol_value +" at "+ price_value +") "+ row.order_type +"ing vol. "+ vol_display);
 								}
 								prev_order_type = row.order_type;
 							});
