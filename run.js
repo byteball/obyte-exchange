@@ -472,9 +472,9 @@ eventBus.on('text', function(from_address, text){
 								if (prev_order_type && prev_order_type !== row.order_type)
 									arrLines.push('-----------------------');
 								var price_value = (row.price/price_multiplier).toLocaleString(['en-US'], {useGrouping: false, maximumFractionDigits: objAsset2.decimals});
-								var price_display = (price_value).toLocaleString([], {maximumFractionDigits: objAsset2.decimals});
+								var price_display = (row.price/price_multiplier).toLocaleString([], {maximumFractionDigits: objAsset2.decimals});
 								var vol_value = (row.total/asset1_multiplier).toLocaleString(['en-US'], {useGrouping: false, maximumFractionDigits: objAsset1.decimals});
-								var vol_display = (vol_value).toLocaleString([], {maximumFractionDigits: objAsset1.decimals});
+								var vol_display = (row.total/asset1_multiplier).toLocaleString([], {maximumFractionDigits: objAsset1.decimals});
 								if (lc_text === 'orders') {
 									arrLines.push("At "+ price_display +" "+ row.order_type +"ing vol. "+ vol_display);
 								}
