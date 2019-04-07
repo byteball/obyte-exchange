@@ -8,11 +8,9 @@ var mutex = require('ocore/mutex.js');
 var objectHash = require('ocore/object_hash.js');
 var db = require('ocore/db.js');
 var eventBus = require('ocore/event_bus.js');
-var mail = require('ocore/mail.js');
 var headlessWallet = require('headless-obyte');
-var desktopApp = require('ocore/desktop_app.js');
 
-const MIN_FEE = 1000;
+const MIN_FEE = 2000;
 const ORDER_TERM = 3600 * 1000;
 const TIMESTAMPER_ADDRESS = 'I2ADHGP4HL6J37NQAD73J7E5SKFIXJOT';
 var operator_address;
