@@ -360,7 +360,11 @@ function matchOrders(pair_id, onDone){
 																	[match_id, arrMatchOrderIds], function(){ cb(); });
 															});
 														},
-														onDone
+														function () {
+															(objJoint.unit.authors.length >= constants.MAX_AUTHORS_PER_UNIT - 2)
+																? matchOrders(pair_id, onDone)
+																: onDone();
+														}
 													);
 												}
 											);
