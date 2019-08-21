@@ -169,6 +169,7 @@ function findMatches(rows, onDone){
 
 function createPaymentMessage(asset, inputs, outputs){
 	var composer = require('ocore/composer.js');
+	var storage = require('ocore/storage.js');
 	var payload = {
 		asset: asset,
 		inputs: inputs,
@@ -177,7 +178,7 @@ function createPaymentMessage(asset, inputs, outputs){
 	return {
 		app: "payment",
 		payload_location: "inline",
-		payload_hash: objectHash.getBase64Hash(payload),
+		payload_hash: objectHash.getBase64Hash(payload, storage.getMinRetrievableMci() >= constants.timestampUpgradeMci),
 		payload: payload
 	};
 }
